@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique // Must end with @giki.edu.pk
+  passwordHash    String
+  isVerified      Boolean  @default(false) // Becomes true after email verification
+  role            Role     @default(STUDENT) // STUDENT, ALUMNI, ADMIN, SOCIETY_HEAD
+  
+  // Profile Details
+  bio             String?
+  batch           String?
+  department      String?
+  profilePicture  String?
+  
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  posts           Post[]
+  comments        Comment[]
+  likes           Like[]
+  products        Product[] // Items the user has listed in the marketplace
+  eventsOrganized Event[]
+  messagesSent    Message[] @relation("SentMessages")
+  messagesRecv    Message[] @relation("ReceivedMessages")
+  groupMemberships GroupMembership[]
+  notifications      Notification[] @relation("UserNotifications")
+  triggeredAlerts    Notification[] @relation("TriggeredNotifications")
+}
+
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+}
+
+enum Role {
+  STUDENT
+  ALUMNI
+  ADMIN
+  SOCIETY_HEAD
+  FACULTY
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  content   String
+  mediaUrl  String?  // Optional image/video for the post
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  groupId   String?  // Optional: if null, it's a global feed post
+  group     Group?   @relation(fields: [groupId], references: [id])
+  
+  comments  Comment[]
+  likes     Like[]
+}
+
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId]) // A user can only like a post once
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  mediaUrl    String?
+  isSold      Boolean  @default(false)
+  category    String?  // e.g., Books, Electronics, Clothing
+  createdAt   DateTime @default(now())
+  
+  sellerId    String
+  seller      User     @relation(fields: [sellerId], references: [id])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  time        String
+  venue       String
+  createdAt   DateTime @default(now())
+  
+  organizerId String
+  organizer   User     @relation(fields: [organizerId], references: [id])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  timestamp   DateTime @default(now())
+  isRead      Boolean  @default(false)
+  
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  department  String?
+  createdAt   DateTime @default(now())
+  
+  members     GroupMembership[]
+  posts       Post[]
+}
+
+
+enum GroupRole {
+  MEMBER
+  ADMIN
+  TEACHER
+}
+
+model GroupMembership {
+  id        String   @id @default(uuid())
+  joinedAt  DateTime @default(now())
+  role      GroupRole @default(MEMBER)
+  
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  MESSAGE
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType
+  content     String
+  link        String?          // e.g., /feed or /societies/123
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  
+  recipientId String
+  recipient   User             @relation("UserNotifications", fields: [recipientId], references: [id])
+  
+  actorId     String?          // The user who triggered the notification
+  actor       User?            @relation("TriggeredNotifications", fields: [actorId], references: [id])
+}
+
+

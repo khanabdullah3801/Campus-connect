@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Documentation & Explanation files
+*.docx
+*.pdf
+explanantion.docx
+implementation_plan.md
+
+# Assistant & Tool files
+AGENTS.md
+CLAUDE.md
+.gemini/
+.cursor/
+.vscode/
+
+# Logs
+*.log
